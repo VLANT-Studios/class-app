@@ -1,8 +1,5 @@
 package de.vlant.klassenapp;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -12,6 +9,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -56,8 +56,8 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             saveCredentials();
-                            startActivity(new Intent(getApplicationContext(), MsgActivity.class));
                             startService(service);
+                            startActivity(new Intent(getApplicationContext(), MsgActivity.class));
                             finish();
                         } else {
                             tvFail.setAlpha(1f);
@@ -125,7 +125,9 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onComplete(@NonNull Task<AuthResult> task) {
                     if (task.isSuccessful()) {
+                        startService(service);
                         startActivity(new Intent(getApplicationContext(), MsgActivity.class));
+                        finish();
                     } else {
                         tvFail.setAlpha(1f);
                         Handler handler = new Handler();

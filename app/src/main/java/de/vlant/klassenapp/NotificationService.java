@@ -1,9 +1,10 @@
 package de.vlant.klassenapp;
 
+import android.app.ActivityManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -13,12 +14,11 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.ValueEventListener;
 
-import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +32,16 @@ public class NotificationService extends Service {
     FirebaseAuth auth;
 
     public NotificationService() {
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
         auth = FirebaseAuth.getInstance();
         auth.addAuthStateListener(new FirebaseAuth.AuthStateListener() {
             @Override
@@ -41,11 +51,6 @@ public class NotificationService extends Service {
             }
         });
         readAlreadySentNotes();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
     }
 
     @Override
@@ -63,14 +68,18 @@ public class NotificationService extends Service {
                         String msg = msgBuilder.toString();
                         String[] sender_time = msg_sender[msg_sender.length - 1].split(", time:");
                         String sender = capitalize(sender_time[0].replace("@vlant.de", ""));
-                        Message message = new Message(Long.parseLong(child.getKey()), msg, sender, null, sender_time[0].equals(auth.getCurrentUser().getEmail()));
+                        Message message = new Message(Long.parseLong(child.getKey()), msg, sender, sender_time[1], sender_time[0].equals(auth.getCurrentUser().getEmail()));
                         if (!alreadySentNotes.contains(message.getID())) {
                             alreadySentNotes.add(message.getID());
-                            MsgActivity.sendNotification(getApplicationContext(), message);
+                            ActivityManager.RunningAppProcessInfo myProcess = new ActivityManager.RunningAppProcessInfo();
+                            ActivityManager.getMyMemoryState(myProcess);
+                            if (myProcess.importance != ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)
+                                MsgActivity.sendNotification(getApplicationContext(), message);
                             try {
-                                (new FileWriter(new File(getFilesDir() + "/alreadySentNotes.vlant"))).append(";" + String.valueOf(message.getID()));
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                                PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(getFilesDir() + "/alreadySentNotes.vlant", true)));
+                                out.print(";" + message.getID());
+                                out.close();
+                            }catch (IOException ignored) {
                             }
                         }
                     }
@@ -88,15 +97,20 @@ public class NotificationService extends Service {
 
 
     private void readAlreadySentNotes() {
-        File aSNFile = new File("/data/data/de.vlant.klassenapp/alreadySentNotes.vlant");
+        File aSNFile = new File(getFilesDir() + "/alreadySentNotes.vlant");
+        if (!aSNFile.exists())
+            return;
         try {
             Scanner myReader = new Scanner(aSNFile);
-            for (String str : myReader.toString().split(";")) {
-                long id = Long.parseLong(str);
-                alreadySentNotes.add(id);
+            for (String str : myReader.nextLine().split(";")) {
+                try {
+                    long id = Long.parseLong(str);
+                    alreadySentNotes.add(id);
+                } catch (NumberFormatException ignored) {}
+                Log.e("VLANTlog", alreadySentNotes.toString());
             }
             myReader.close();
-        } catch (IOException e) {
+        } catch (IOException|java.util.NoSuchElementException e) {
             e.printStackTrace();
         }
     }

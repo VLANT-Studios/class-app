@@ -1,0 +1,224 @@
+package de.vlant.klassenapp;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.QuickContactBadge;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
+
+public class MsgActivity extends AppCompatActivity {
+
+    private static final String CHANNEL_ID = "vlant_messages_channel";
+    EditText newMsg;
+    ImageButton send;
+
+    static DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
+    static DatabaseReference msgRef = rootRef.child("messages");
+    static DatabaseReference colorRef = rootRef.child("colors");
+
+    MessageAdapter messageAdapter;
+    ListView messagesView;
+
+    Message lastMsg;
+    public static int lastNoteID = 1530;
+
+    public static HashMap<String, String> usercolors = new HashMap<>();
+    public static Drawable vlantIcon;
+    public static Drawable klassensprecherIcon;
+
+    private FirebaseAuth auth;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_msg);
+        messageAdapter = new MessageAdapter(this);
+        messagesView = findViewById(R.id.messages_view);
+        auth = FirebaseAuth.getInstance();
+        messagesView.setAdapter(messageAdapter);
+        send = findViewById(R.id.sendButton);
+        newMsg = findViewById(R.id.msgInput);
+        colorRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for (DataSnapshot usercolor : snapshot.getChildren()) {
+                    String mail = usercolor.getKey() + "@vlant.de";
+                    String color = usercolor.getValue(String.class);
+                    usercolors.put(mail, color);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+        vlantIcon = ContextCompat.getDrawable(this, R.drawable.vlant_round);
+        klassensprecherIcon = ContextCompat.getDrawable(this, R.drawable.klassensprecher);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Nachricht";
+            String description = "Für Nachrichten";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            if (notificationManager.getNotificationChannel(CHANNEL_ID) == null)
+                notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        msgRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String[] msg_sender = child.getValue(String.class).split("OOOvlaOOO");
+                    StringBuilder msgBuilder = new StringBuilder();
+                    for (String string : Arrays.copyOfRange(msg_sender, 0, msg_sender.length - 1))
+                        msgBuilder.append(string + " ");
+                    String msg = msgBuilder.toString();
+                    String[] sender_time = msg_sender[msg_sender.length - 1].split(", time:");
+                    String sender = capitalize(sender_time[0].replace("@vlant.de", ""));
+                    String time = sender_time[1];
+                    Message message = new Message(Long.parseLong(child.getKey()), msg, sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()));
+                    if (!checkForId(message.getID())) {
+                        messageAdapter.add(message);
+                        lastMsg = message;
+                    }
+                    // scroll the ListView to the last added element
+                    messagesView.setSelection(messagesView.getCount() - 1);
+                }
+            }
+
+            private boolean checkForId(long id) {
+                for (Message msg : messageAdapter.messages) {
+                    if (msg.getID() == id) return true;
+                }
+                return false;
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+        send.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SimpleDateFormat formatter = new SimpleDateFormat("HH:mm, dd.MM.yy", Locale.GERMANY);
+                Date date = new Date();
+                msgRef.child(String.valueOf(lastMsg.getID() + 1)).setValue(newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + formatter.format(date));
+                newMsg.setText("");
+            }
+        });
+    }
+
+    public static void sendNotification(Context context, Message message) {
+        Intent intent = new Intent(context, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+        NotificationCompat.Builder noteBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+        noteBuilder.setSmallIcon(R.drawable.notification_small)
+                .setContentText(message.getMemberName() + ", " + message.getTime() + ": " + message.getText())
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        notificationManager.notify(lastNoteID + 1, noteBuilder.build());
+        lastNoteID++;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.chat_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.logout:
+                (new File(getFilesDir() + "/credentials.vlant")).delete();
+                startActivity(new Intent(this, LoginActivity.class));
+                auth.signOut();
+                finish();
+                return true;
+            case R.id.credits:
+                showCredits();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void showCredits() {
+        Toast.makeText(this, "VLANT!!!!!!!!!!!!!", Toast.LENGTH_SHORT).show();
+    }
+
+    public static String capitalize(String str) {
+        if(str == null || str.isEmpty()) {
+            return str;
+        }
+
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
+    }
+}

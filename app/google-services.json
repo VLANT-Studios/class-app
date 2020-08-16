@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "954533884902",
+    "firebase_url": "https://classchat-2020.firebaseio.com",
+    "project_id": "classchat-2020",
+    "storage_bucket": "classchat-2020.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:954533884902:android:fda77ae8e34edcb348dc27",
+        "android_client_info": {
+          "package_name": "de.vlant.klassenapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "954533884902-rkq0kbuqsgp3t8do028r9fiesvt648b4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgo_C8jDh-2sM2LcLQ-9K4n5WHXEW5h4s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "954533884902-rkq0kbuqsgp3t8do028r9fiesvt648b4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

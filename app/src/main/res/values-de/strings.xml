@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Klassenapp</string>
+    <string name="load_text_1">Nachrichten werden geladen...</string>
+    <string name="load_text_2">Pinnwand wird geladen...</string>
+    <string name="load_text_3">Umfragen werden geladen...</string>
+</resources>

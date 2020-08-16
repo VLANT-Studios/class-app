@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="de.vlant.klassenapp">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/vlant"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/vlant_round"
+        android:supportsRtl="true"
+        android:theme="@style/NoActionBar">
+        <service
+            android:name=".NotificationService"
+            android:enabled="true"
+            android:exported="false"></service>
+
+        <activity android:name=".LoginActivity" />
+        <activity
+            android:name=".MsgActivity"
+            android:label="Chat"
+            android:theme="@style/AppTheme" />
+        <activity android:name=".LoadActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -1,12 +1,18 @@
 package de.vlant.klassenapp;
 
 import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.app.Person;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -19,15 +25,23 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 
+import static de.vlant.klassenapp.MsgActivity.CHANNEL_ID;
+import static de.vlant.klassenapp.MsgActivity.DATE_FORMAT;
 import static de.vlant.klassenapp.MsgActivity.capitalize;
 
 public class NotificationService extends Service {
+    public static HashMap<Integer, String> currentNotifications = new HashMap<>();
     public static List<Long> alreadySentNotes = new ArrayList<>();
+    public static int lastNoteID = 1530;
+    public static final String EXTRA_NOTE_ID = "de.vlant.intent.extra.NOTIFICATION_ID";
 
     FirebaseAuth auth;
 
@@ -74,7 +88,7 @@ public class NotificationService extends Service {
                             ActivityManager.RunningAppProcessInfo myProcess = new ActivityManager.RunningAppProcessInfo();
                             ActivityManager.getMyMemoryState(myProcess);
                             if (myProcess.importance != ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)
-                                MsgActivity.sendNotification(getApplicationContext(), message);
+                                sendNotification(getApplicationContext(), message);
                             try {
                                 PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(getFilesDir() + "/alreadySentNotes.vlant", true)));
                                 out.print(";" + message.getID());
@@ -93,6 +107,48 @@ public class NotificationService extends Service {
         }
 
         return super.onStartCommand(intent, flags, startId);
+    }
+
+
+    public static void sendNotification(Context context, Message message) {
+        int id = lastNoteID + 1;
+        Intent intent = new Intent(context, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+        Intent delIntent = new Intent(context, NotificationDeleteReceiver.class).putExtra(EXTRA_NOTE_ID, id);
+        PendingIntent deletePendingIntent = PendingIntent.getActivity(context, 0, delIntent, 0);
+        String contentText = message.getMemberName() + ", " + message.getTime() + ": " + message.getText();
+        NotificationCompat.Builder noteBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+        noteBuilder.setSmallIcon(R.drawable.notification_small)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setDeleteIntent(deletePendingIntent)
+                .setAutoCancel(true);
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        if (currentNotifications.size() > 0) {
+            NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle("");
+            int i = 0;
+            for (String value : currentNotifications.values()) {
+                try {
+                    messagingStyle.addMessage(value, DATE_FORMAT.parse(message.getTime()).getTime(), (Person) null);
+                } catch (ParseException e) {
+                    messagingStyle.addMessage(value, new Date().getTime(), (Person) null);
+                }
+                notificationManager.cancel((int) currentNotifications.keySet().toArray()[i]);
+                i++;
+            }
+            try {
+                messagingStyle.addMessage(contentText, DATE_FORMAT.parse(message.getTime()).getTime(), (Person) null);
+            } catch (ParseException e) {
+                messagingStyle.addMessage(contentText, new Date().getTime(), (Person) null);
+            }
+            noteBuilder.setStyle(messagingStyle);
+        } else
+            noteBuilder.setContentText(contentText);
+        Notification notification = noteBuilder.build();
+        notificationManager.notify(id, notification);
+        currentNotifications.put(id, contentText);
+        lastNoteID++;
     }
 
 

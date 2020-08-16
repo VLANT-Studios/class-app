@@ -2,8 +2,6 @@ package de.vlant.klassenapp;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -19,8 +17,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,7 +36,9 @@ import java.util.Locale;
 
 public class MsgActivity extends AppCompatActivity {
 
-    private static final String CHANNEL_ID = "vlant_messages_channel";
+    public static final String CHANNEL_ID = "vlant_messages_channel";
+    private static final String TIME_FORMAT = "HH:mm, dd.MM.yy";
+    public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(TIME_FORMAT, Locale.GERMANY);
     EditText newMsg;
     ImageButton send;
 
@@ -52,7 +50,6 @@ public class MsgActivity extends AppCompatActivity {
     ListView messagesView;
 
     Message lastMsg;
-    public static int lastNoteID = 1530;
 
     public static HashMap<String, String> usercolors = new HashMap<>();
     public static Drawable vlantIcon;
@@ -141,27 +138,11 @@ public class MsgActivity extends AppCompatActivity {
         send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                SimpleDateFormat formatter = new SimpleDateFormat("HH:mm, dd.MM.yy", Locale.GERMANY);
                 Date date = new Date();
-                msgRef.child(String.valueOf(lastMsg.getID() + 1)).setValue(newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + formatter.format(date));
+                msgRef.child(String.valueOf(lastMsg.getID() + 1)).setValue(newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + DATE_FORMAT.format(date));
                 newMsg.setText("");
             }
         });
-    }
-
-    public static void sendNotification(Context context, Message message) {
-        Intent intent = new Intent(context, LoginActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
-        NotificationCompat.Builder noteBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
-        noteBuilder.setSmallIcon(R.drawable.notification_small)
-                .setContentText(message.getMemberName() + ", " + message.getTime() + ": " + message.getText())
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true);
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-        notificationManager.notify(lastNoteID + 1, noteBuilder.build());
-        lastNoteID++;
     }
 
     @Override

@@ -6,7 +6,6 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,7 +15,6 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class MessageAdapter extends BaseAdapter {
 
@@ -73,7 +71,7 @@ public class MessageAdapter extends BaseAdapter {
             if (MsgActivity.usercolors.containsKey(message.getMemberName().toLowerCase() + "@vlant.de")) {
                 String userColorString = "empty";
                 userColorString = MsgActivity.usercolors.get(message.getMemberName().toLowerCase() + "@vlant.de");
-                int[] colors = {Color.RED, Color.BLUE, Color.LTGRAY};
+                int[] colors = {Color.rgb(0xf2, 0x7d, 0x7d), Color.rgb(0x7d, 0xf2, 0x8d), Color.rgb(0xee, 0xf2, 0x7d), Color.LTGRAY, Color.rgb(0x26, 0x98, 0xF1)};
                 if (TextUtils.isDigitsOnly(userColorString))
                     drawable.setColor(colors[Integer.parseInt(userColorString)-1]);
                 else if (userColorString.equals("vlant"))

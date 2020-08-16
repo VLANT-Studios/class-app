@@ -143,6 +143,7 @@ public class MsgActivity extends AppCompatActivity {
                 newMsg.setText("");
             }
         });
+        NotificationService.currentNotifications.clear();
     }
 
     @Override

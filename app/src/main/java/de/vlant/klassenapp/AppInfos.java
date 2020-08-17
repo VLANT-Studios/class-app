@@ -1,5 +1,5 @@
 package de.vlant.klassenapp;
 
 public class AppInfos {
-    public static final String VERSION = "v0.3";
+    public static final String VERSION = "v0.3.1";
 }

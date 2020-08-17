@@ -79,10 +79,19 @@ public class NotificationService extends Service {
                         StringBuilder msgBuilder = new StringBuilder();
                         for (String string : Arrays.copyOfRange(msg_sender, 0, msg_sender.length - 1))
                             msgBuilder.append(string + " ");
-                        String msg = msgBuilder.toString();
+                        String msg = msgBuilder.toString().trim();
                         String[] sender_time = msg_sender[msg_sender.length - 1].split(", time:");
                         String sender = capitalize(sender_time[0].replace("@vlant.de", ""));
-                        Message message = new Message(Long.parseLong(child.getKey()), msg, sender, sender_time[1], sender_time[0].equals(auth.getCurrentUser().getEmail()));
+                        String time = sender_time[1];
+                        Message message;
+                        if (msg.startsWith("reply:") && msg.contains("|;|") && msg.contains("|end;reply|")) {
+                            String[] split = msg.split("\\|;\\|");
+                            String[] end_reply = split[1].split("\\|end;reply\\|");
+                            message = new Message(Long.parseLong(child.getKey()), end_reply[1], sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()),
+                                    Message.fromReply(split[0].replace("reply:", ""), end_reply[0]));
+                            Log.e("VLANTlog", message.toString());
+                        } else
+                            message = new Message(Long.parseLong(child.getKey()), msg, sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()));
                         if (!alreadySentNotes.contains(message.getID())) {
                             alreadySentNotes.add(message.getID());
                             ActivityManager.RunningAppProcessInfo myProcess = new ActivityManager.RunningAppProcessInfo();

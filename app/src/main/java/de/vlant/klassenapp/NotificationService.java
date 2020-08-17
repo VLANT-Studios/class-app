@@ -117,7 +117,7 @@ public class NotificationService extends Service {
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
         Intent delIntent = new Intent(context, NotificationDeleteReceiver.class).putExtra(EXTRA_NOTE_ID, id);
         PendingIntent deletePendingIntent = PendingIntent.getActivity(context, 0, delIntent, 0);
-        String contentText = message.getMemberName() + ", " + message.getTime() + ": " + message.getText();
+        String contentText = message.getUserName() + ", " + message.getTime() + ": " + message.getText();
         NotificationCompat.Builder noteBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
         noteBuilder.setSmallIcon(R.drawable.notification_small)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

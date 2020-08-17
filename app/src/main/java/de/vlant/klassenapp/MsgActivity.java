@@ -1,18 +1,27 @@
 package de.vlant.klassenapp;
 
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -96,6 +105,7 @@ public class MsgActivity extends AppCompatActivity {
             if (notificationManager.getNotificationChannel(CHANNEL_ID) == null)
                 notificationManager.createNotificationChannel(channel);
         }
+        registerForContextMenu(messagesView);
     }
 
     @Override
@@ -109,11 +119,19 @@ public class MsgActivity extends AppCompatActivity {
                     StringBuilder msgBuilder = new StringBuilder();
                     for (String string : Arrays.copyOfRange(msg_sender, 0, msg_sender.length - 1))
                         msgBuilder.append(string + " ");
-                    String msg = msgBuilder.toString();
+                    String msg = msgBuilder.toString().trim();
                     String[] sender_time = msg_sender[msg_sender.length - 1].split(", time:");
                     String sender = capitalize(sender_time[0].replace("@vlant.de", ""));
                     String time = sender_time[1];
-                    Message message = new Message(Long.parseLong(child.getKey()), msg, sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()));
+                    Message message;
+                    if (msg.startsWith("reply:") && msg.contains("|;|") && msg.contains("|end;reply|")) {
+                        String[] split = msg.split("\\|;\\|");
+                        String[] end_reply = split[1].split("\\|end;reply\\|");
+                        message = new Message(Long.parseLong(child.getKey()), end_reply[1], sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()),
+                                Message.fromReply(split[0].replace("reply:", ""), end_reply[0]));
+                        Log.e("VLANTlog", message.toString());
+                    } else
+                        message = new Message(Long.parseLong(child.getKey()), msg, sender, time, sender_time[0].equals(auth.getCurrentUser().getEmail()));
                     if (!checkForId(message.getID())) {
                         messageAdapter.add(message);
                         lastMsg = message;
@@ -139,7 +157,8 @@ public class MsgActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Date date = new Date();
-                msgRef.child(String.valueOf(lastMsg.getID() + 1)).setValue(newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + DATE_FORMAT.format(date));
+                msgRef.child(String.valueOf(lastMsg.getID() + 1))
+                        .setValue(newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + DATE_FORMAT.format(date));
                 newMsg.setText("");
             }
         });
@@ -179,8 +198,59 @@ public class MsgActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v,
+                                    ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        if (v == messagesView) {
+            MenuInflater inflater = getMenuInflater();
+            inflater.inflate(R.menu.msg_menu, menu);
+        }
+    }
+
+    @Override
+    public boolean onContextItemSelected(@NonNull MenuItem item) {
+        AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
+        switch (item.getItemId()) {
+            case R.id.reply_menu_entry:
+                if (newMsg.getText().toString().trim().isEmpty()) {
+                    Toast.makeText(this, "Nachricht leer!", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                View message = info.targetView;
+                TextView replySender  = message.findViewById(R.id.name);
+                TextView replyMessage = message.findViewById(R.id.message_body);
+                String replyToName    = (replySender  == null) ? auth.getCurrentUser().getEmail().replace("@vlant.de", "") : replySender.getText().toString();
+                String replyToMsg     = (replyMessage != null) ? replyMessage.getText().toString().trim() : "???";
+                if (replyToMsg.contains("|end;reply|"))
+                    replyToMsg = replyToMsg.split("\\|end;reply\\|")[1];
+                Date date = new Date();
+                msgRef.child(String.valueOf(lastMsg.getID() + 1))
+                        .setValue("reply:" + capitalize(replyToName.replaceAll(",.*", "")) + "|;|" + replyToMsg + "|end;reply|"
+                                + newMsg.getText().toString() + "OOOvlaOOO" + auth.getCurrentUser().getEmail() + ", time:" + DATE_FORMAT.format(date));
+                newMsg.setText("");
+                return true;
+            case R.id.copy_menu_entry:
+                TextView messageTv = info.targetView.findViewById(R.id.message_body);
+                ClipboardManager clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                if (messageTv != null)
+                    clipboardManager.setPrimaryClip(ClipData.newPlainText("Message from VLANT", messageTv.getText().toString().trim()));
+            default:
+                return super.onContextItemSelected(item);
+        }
+    }
+
     private void showCredits() {
-        Toast.makeText(this, "VLANT!!!!!!!!!!!!!", Toast.LENGTH_SHORT).show();
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        dialogBuilder.setTitle("Info")
+                .setMessage("Klassenapp, erstellt von VLANT Studios \n" + "Version: " + AppInfos.VERSION)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(null, null);
+        dialogBuilder.create().show();
     }
 
     public static String capitalize(String str) {

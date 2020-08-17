@@ -1,6 +1,5 @@
 package de.vlant.klassenapp;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
@@ -46,45 +45,78 @@ public class MessageAdapter extends BaseAdapter {
     }
 
     // This is the backbone of the class, it handles the creation of single ListView row (chat bubble)
-    @SuppressLint("WrongViewCast")
     @Override
     public View getView(int i, View convertView, ViewGroup viewGroup) {
         MessageViewHolder holder = new MessageViewHolder();
         LayoutInflater messageInflater = (LayoutInflater) context.getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
         Message message = messages.get(i);
 
-        if (message.isBelongsToCurrentUser()) { // this message was sent by us so let's create a basic chat bubble on the right
+        if (message.isReply()) {
+            ReplyMessageViewHolder replyHolder = new ReplyMessageViewHolder();
+            if (message.isBelongsToCurrentUser()) {
+                convertView = messageInflater.inflate(R.layout.my_message_reply, null);
+                replyHolder.messageBody = (TextView) convertView.findViewById(R.id.message_body);
+                replyHolder.replyToName = (TextView) convertView.findViewById(R.id.reply_sender);
+                replyHolder.replyToMsg = (TextView) convertView.findViewById(R.id.reply_message);
+                convertView.setTag(replyHolder);
+                replyHolder.messageBody.setText(message.getText());
+                replyHolder.replyToMsg.setText(message.getReplyTo().getText());
+                replyHolder.replyToName.setText(message.getReplyTo().getUserName());
+            } else {
+                convertView = messageInflater.inflate(R.layout.their_message_reply, null);
+                replyHolder.avatar = (ImageView) convertView.findViewById(R.id.avatar);
+                replyHolder.name = (TextView) convertView.findViewById(R.id.name);
+                replyHolder.messageBody = (TextView) convertView.findViewById(R.id.message_body);
+                replyHolder.replyToName = (TextView) convertView.findViewById(R.id.reply_sender_their);
+                replyHolder.replyToMsg = (TextView) convertView.findViewById(R.id.reply_message_their);
+                convertView.setTag(replyHolder);
+                getAndSetColor(message, replyHolder.avatar);
+                replyHolder.name.setText(message.getUserName());
+                replyHolder.messageBody.setText(message.getText());
+                replyHolder.replyToMsg.setText(message.getReplyTo().getText());
+                replyHolder.replyToName.setText(message.getReplyTo().getUserName());
+            }
+            return convertView;
+        }
+
+        if (message.isBelongsToCurrentUser()) {
             convertView = messageInflater.inflate(R.layout.my_message, null);
             holder.messageBody = (TextView) convertView.findViewById(R.id.message_body);
             convertView.setTag(holder);
             holder.messageBody.setText(message.getText());
-        } else { // this message was sent by someone else so let's create an advanced chat bubble on the left
+        } else {
             convertView = messageInflater.inflate(R.layout.their_message, null);
             holder.avatar = (ImageView) convertView.findViewById(R.id.avatar);
             holder.name = (TextView) convertView.findViewById(R.id.name);
             holder.messageBody = (TextView) convertView.findViewById(R.id.message_body);
             convertView.setTag(holder);
-
-            holder.name.setText(message.getMemberName() + ", " + message.getTime());
+            getAndSetColor(message, holder.avatar);
+            holder.name.setText(message.getUserName() + ", " + message.getTime());
             holder.messageBody.setText(message.getText());
-            GradientDrawable drawable = (GradientDrawable) holder.avatar.getBackground();
-            if (MsgActivity.usercolors.containsKey(message.getMemberName().toLowerCase() + "@vlant.de")) {
-                String userColorString = "empty";
-                userColorString = MsgActivity.usercolors.get(message.getMemberName().toLowerCase() + "@vlant.de");
-                int[] colors = {Color.rgb(0xf2, 0x7d, 0x7d), Color.rgb(0x7d, 0xf2, 0x8d), Color.rgb(0xee, 0xf2, 0x7d), Color.LTGRAY, Color.rgb(0x26, 0x98, 0xF1)};
-                if (TextUtils.isDigitsOnly(userColorString))
-                    drawable.setColor(colors[Integer.parseInt(userColorString)-1]);
-                else if (userColorString.equals("vlant"))
-                    holder.avatar.setImageDrawable(MsgActivity.vlantIcon);
-                else if (userColorString.equals("klassensprecher"))
-                    holder.avatar.setImageDrawable(MsgActivity.klassensprecherIcon);
-                else
-                    drawable.setColor(Color.rgb(0,0,0));
-            } else
-                drawable.setColor(Color.GRAY);
         }
-
         return convertView;
+    }
+
+    private void getAndSetColor(Message message, ImageView avatar) {
+        GradientDrawable drawable = (GradientDrawable) avatar.getBackground();
+        if (MsgActivity.usercolors.containsKey(message.getUserName().toLowerCase() + "@vlant.de")) {
+            String userColorString = "empty";
+            userColorString = MsgActivity.usercolors.get(message.getUserName().toLowerCase() + "@vlant.de");
+            int[] colors = {Color.rgb(0xF2, 0x7D, 0x7D),
+                    Color.rgb(0x7D, 0xF2, 0x8D),
+                    Color.rgb(0xEE, 0xF2, 0x7D),
+                    Color.LTGRAY,
+                    Color.rgb(0x26, 0x98, 0xF1)};
+            if (TextUtils.isDigitsOnly(userColorString))
+                drawable.setColor(colors[Integer.parseInt(userColorString)-1]);
+            else if (userColorString.equals("vlant"))
+                avatar.setImageDrawable(MsgActivity.vlantIcon);
+            else if (userColorString.equals("klassensprecher"))
+                avatar.setImageDrawable(MsgActivity.klassensprecherIcon);
+            else
+                drawable.setColor(Color.rgb(0,0,0));
+        } else
+            drawable.setColor(Color.GRAY);
     }
 
 }
@@ -93,4 +125,13 @@ class MessageViewHolder {
     public ImageView avatar;
     public TextView name;
     public TextView messageBody;
+}
+
+class ReplyMessageViewHolder {
+    public ImageView avatar;
+    public TextView name;
+    public TextView messageBody;
+
+    public TextView replyToName;
+    public TextView replyToMsg;
 }
